@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battery Pack Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-6">
+
+  <div class="max-w-lg mx-auto bg-white p-8 rounded shadow">
+    <h2 class="text-2xl font-bold mb-4">Scooter Battery Pack Calculator</h2>
+
+    <div class="mb-4">
+      <label class="block text-gray-700">
+        Enter Voltage:
+      </label>
+      <input type="number" id="voltageInput" class="border mt-2 px-3 py-2 w-full rounded" placeholder="Enter voltage" />
+      <button onclick="addVoltage()" class="bg-blue-500 text-white px-4 py-2 mt-4 rounded hover:bg-blue-600">
+        Add Voltage
+      </button>
+    </div>
+
+    <div class="mt-6">
+      <h3 class="text-lg font-bold">Entered Voltages:</h3>
+      <p id="voltagesDisplay" class="mt-2">No voltages entered yet.</p>
+
+      <h3 class="text-lg font-bold mt-6">Sets (Each Target Voltage: <span id="targetVoltage">0</span>V):</h3>
+      <div id="setsDisplay" class="mt-2">
+        No sets yet.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let voltages = [];
+    const batteriesPerSet = 3;
+    const totalSets = 10;
+
+    // Function to add voltage
+    function addVoltage() {
+      const voltageInput = document.getElementById('voltageInput');
+      const voltage = parseFloat(voltageInput.value);
+
+      if (!isNaN(voltage) && voltages.length < totalSets * batteriesPerSet) {
+        voltages.push(voltage);
+        voltageInput.value = ''; // Clear input after adding
+        displayVoltages();
+        if (voltages.length === totalSets * batteriesPerSet) {
+          calculateBalancedSets();
+        }
+      }
+    }
+
+    // Function to display entered voltages
+    function displayVoltages() {
+      const voltagesDisplay = document.getElementById('voltagesDisplay');
+      if (voltages.length === 0) {
+        voltagesDisplay.textContent = 'No voltages entered yet.';
+      } else {
+        voltagesDisplay.textContent = voltages.join(', ') + ` (${voltages.length} voltages added)`;
+      }
+    }
+
+    // Function to calculate sets of batteries with balanced target voltage
+    function calculateBalancedSets() {
+      const setsDisplay = document.getElementById('setsDisplay');
+      setsDisplay.innerHTML = ''; // Clear previous sets
+      const totalVoltage = voltages.reduce((sum, voltage) => sum + voltage, 0);
+      const targetVoltage = Math.round(totalVoltage / totalSets);
+      document.getElementById('targetVoltage').textContent = targetVoltage; // Display target voltage
+
+      // Sort the voltages in descending order
+      voltages.sort((a, b) => b - a);
+
+      // Initialize sets
+      let sets = Array.from({length: totalSets}, () => []);
+
+      // Distribute voltages to sets, trying to balance each set's sum
+      voltages.forEach(voltage => {
+        let setWithLowestSum = sets.reduce((minSet, currentSet) => {
+          return sumOfSet(currentSet) < sumOfSet(minSet) ? currentSet : minSet;
+        });
+        setWithLowestSum.push(voltage);
+      });
+
+      // Display sets
+      sets.forEach((set, index) => {
+        const setSum = set.reduce((sum, voltage) => sum + voltage, 0);
+        const setElement = document.createElement('p');
+        setElement.textContent = `Set ${index + 1}: ${set.join(' + ')} = ${setSum.toFixed(2)}V`;
+        setsDisplay.appendChild(setElement);
+      });
+    }
+
+    // Helper function to calculate the sum of a set
+    function sumOfSet(set) {
+      return set.reduce((sum, voltage) => sum + voltage, 0);
+    }
+  </script>
+
+</body>
+
+</html>
