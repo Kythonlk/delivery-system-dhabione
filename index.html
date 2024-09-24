@@ -4,81 +4,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Battery Pack Calculator</title>
+  <title>Battery Pack Calculator v2</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100 p-6">
-
-  <div class="max-w-lg mx-auto bg-white p-8 rounded shadow">
-    <h2 class="text-2xl font-bold mb-4">Scooter Battery Pack Calculator</h2>
-
-    <div class="mb-4">
-      <label class="block text-gray-700">
-        Enter Voltage:
-      </label>
-      <input type="number" id="voltageInput" class="border mt-2 px-3 py-2 w-full rounded" placeholder="Enter voltage" />
-      <button onclick="addVoltage()" class="bg-blue-500 text-white px-4 py-2 mt-4 rounded hover:bg-blue-600">
-        Add Voltage
-      </button>
+<body class="bg-gray-100">
+  <div class="flex flex-col md:flex-row h-screen">
+    <!-- Sidebar -->
+    <div class="w-full md:w-1/3 bg-white p-6 overflow-y-auto">
+      <h2 class="text-2xl font-bold mb-4">Scooter Battery Pack Calculator</h2>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Enter Voltage:</label>
+        <div class="flex">
+          <input type="number" id="voltageInput" class="border px-3 py-2 w-full rounded-l"
+            placeholder="Enter voltage" />
+          <button onclick="addVoltage()"
+            class="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600">Add</button>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Set Count:</label>
+        <select id="setCount" class="border px-3 py-2 w-full rounded">
+          <option value="3">3 Sets</option>
+          <option value="4">4 Sets</option>
+          <option value="5">5 Sets</option>
+          <option value="10">10 Sets</option>
+        </select>
+      </div>
+      <button onclick="calculateSets()"
+        class="bg-green-500 text-white px-4 py-2 w-full rounded hover:bg-green-600 mb-4">Generate Sets</button>
+      <h3 class="text-lg font-bold mb-2">Entered Voltages:</h3>
+      <ul id="voltagesList" class="list-none pl-0 mb-4"></ul>
     </div>
 
-    <div class="mt-6">
-      <h3 class="text-lg font-bold">Entered Voltages:</h3>
-      <p id="voltagesDisplay" class="mt-2">No voltages entered yet.</p>
-
-      <h3 class="text-lg font-bold mt-6">Sets (Each Target Voltage: <span id="targetVoltage">0</span>V):</h3>
-      <div id="setsDisplay" class="mt-2">
-        No sets yet.
-      </div>
+    <!-- Main content -->
+    <div class="w-full md:w-2/3 p-6 overflow-y-auto">
+      <h3 class="text-xl font-bold mb-4">Generated Sets:</h3>
+      <div id="setsDisplay"></div>
     </div>
   </div>
 
   <script>
-    let voltages = [];
-    const batteriesPerSet = 3;
-    const totalSets = 10;
+    let voltages = JSON.parse(localStorage.getItem('voltages')) || [];
 
-    // Function to add voltage
     function addVoltage() {
       const voltageInput = document.getElementById('voltageInput');
       const voltage = parseFloat(voltageInput.value);
-
-      if (!isNaN(voltage) && voltages.length < totalSets * batteriesPerSet) {
+      if (!isNaN(voltage)) {
         voltages.push(voltage);
-        voltageInput.value = ''; // Clear input after adding
-        displayVoltages();
-        if (voltages.length === totalSets * batteriesPerSet) {
-          calculateBalancedSets();
-        }
+        voltageInput.value = '';
+        updateVoltagesList();
+        saveToLocalStorage();
       }
     }
 
-    // Function to display entered voltages
-    function displayVoltages() {
-      const voltagesDisplay = document.getElementById('voltagesDisplay');
-      if (voltages.length === 0) {
-        voltagesDisplay.textContent = 'No voltages entered yet.';
-      } else {
-        voltagesDisplay.textContent = voltages.join(', ') + ` (${voltages.length} voltages added)`;
-      }
+    function updateVoltagesList() {
+      const voltagesList = document.getElementById('voltagesList');
+      voltagesList.innerHTML = '';
+      voltages.forEach((voltage, index) => {
+        const li = document.createElement('li');
+        li.className = 'mb-2 flex items-center';
+        li.innerHTML = `
+                    <span class="mr-2 bg-gray-200 rounded-full w-6 h-6 flex items-center justify-center text-sm">${index + 1}</span>
+                    <span class="flex-grow">${voltage}V</span>
+                    <button onclick="removeVoltage(${index})" class="ml-2 text-red-500 hover:text-red-700">Remove</button>
+                `;
+        voltagesList.appendChild(li);
+      });
     }
 
-    // Function to calculate sets of batteries with balanced target voltage
-    function calculateBalancedSets() {
+    function removeVoltage(index) {
+      voltages.splice(index, 1);
+      updateVoltagesList();
+      saveToLocalStorage();
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('voltages', JSON.stringify(voltages));
+    }
+
+    function calculateSets() {
+      const setCount = parseInt(document.getElementById('setCount').value);
       const setsDisplay = document.getElementById('setsDisplay');
-      setsDisplay.innerHTML = ''; // Clear previous sets
+      setsDisplay.innerHTML = '';
+
+      if (voltages.length < setCount) {
+        setsDisplay.innerHTML = '<p class="text-red-500">Not enough voltages to create sets.</p>';
+        return;
+      }
+
       const totalVoltage = voltages.reduce((sum, voltage) => sum + voltage, 0);
-      const targetVoltage = Math.round(totalVoltage / totalSets);
-      document.getElementById('targetVoltage').textContent = targetVoltage; // Display target voltage
+      const targetVoltage = Math.round(totalVoltage / setCount);
 
-      // Sort the voltages in descending order
       voltages.sort((a, b) => b - a);
+      let sets = Array.from({length: setCount}, () => []);
 
-      // Initialize sets
-      let sets = Array.from({length: totalSets}, () => []);
-
-      // Distribute voltages to sets, trying to balance each set's sum
       voltages.forEach(voltage => {
         let setWithLowestSum = sets.reduce((minSet, currentSet) => {
           return sumOfSet(currentSet) < sumOfSet(minSet) ? currentSet : minSet;
@@ -86,21 +106,27 @@
         setWithLowestSum.push(voltage);
       });
 
-      // Display sets
       sets.forEach((set, index) => {
-        const setSum = set.reduce((sum, voltage) => sum + voltage, 0);
-        const setElement = document.createElement('p');
-        setElement.textContent = `Set ${index + 1}: ${set.join(' + ')} = ${setSum.toFixed(2)}V`;
+        const setSum = sumOfSet(set);
+        const setElement = document.createElement('div');
+        setElement.className = 'mb-4 p-4 bg-white rounded shadow';
+        setElement.innerHTML = `
+                    <h4 class="font-bold">Set ${index + 1}</h4>
+                    <p>Voltages: ${set.join(' + ')}</p>
+                    <p>Total: ${setSum.toFixed(2)}V</p>
+                    <p>Difference from target (${targetVoltage}V): ${(setSum - targetVoltage).toFixed(2)}V</p>
+                `;
         setsDisplay.appendChild(setElement);
       });
     }
 
-    // Helper function to calculate the sum of a set
     function sumOfSet(set) {
       return set.reduce((sum, voltage) => sum + voltage, 0);
     }
-  </script>
 
+    // Initialize the voltage list on page load
+    updateVoltagesList();
+  </script>
 </body>
 
 </html>
